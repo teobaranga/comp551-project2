@@ -25,7 +25,7 @@ for idx, txt in enumerate(train_x.Text):
         txt_clean = [x for x in txt_no_num if x != u' '] # Only append strings != whitespace
         train_x_cl = {} # Initialize dictionary to use in rebuilding train_x dataframe
         train_x_cl['Id'] = train_x.Id[idx] # Dictionary Id item
-        train_x_cl['Text'] = txt_clean # Dictionary Text item
+        train_x_cl['Text'] = ''.join(txt_clean) # Dictionary Text item
         train_x_clean.append(train_x_cl)
 #del txt_clean, train_x_cl, train_x, x # Clear variables
 train_x = pd.DataFrame(train_x_clean) # Recreate dataframe

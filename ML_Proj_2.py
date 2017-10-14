@@ -21,7 +21,7 @@ train_x.Text = [list(txt) for txt in train_x.Text] # Split strings to list of le
 train_x_clean = [] # Initialize list of clean text
 # Loop through each sentence and clean unwanted elements
 for idx, txt in enumerate(train_x.Text):
-        txt_no_num = [x for x in txt if not x.isdigit()] # Only append non-digit elements
+        txt_no_num = [x for x in txt if x.isalpha()] # Only append non-digit elements
         txt_clean = [x for x in txt_no_num if x != u' '] # Only append strings != whitespace
         train_x_cl = {} # Initialize dictionary to use in rebuilding train_x dataframe
         train_x_cl['Id'] = train_x.Id[idx] # Dictionary Id item

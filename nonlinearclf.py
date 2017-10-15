@@ -68,13 +68,13 @@ def get_response(neighbours):
     return sorted_votes[0][0]
 
 
-MAX_ROWS = 100
+MAX_ROWS = 200
 
 # Load the train set
 # X: (Id, Text)
-train_set_x = np.genfromtxt('train_set_x.csv', delimiter=',', dtype=None, names=True, max_rows=MAX_ROWS)
+train_set_x = np.genfromtxt('dat_train_x_no_eng.csv', delimiter=',', dtype=None, names=True, max_rows=MAX_ROWS)
 # Y: (Id, Category)
-train_set_y = np.genfromtxt('train_set_y.csv', delimiter=',', dtype=None, names=True, max_rows=MAX_ROWS)
+train_set_y = np.genfromtxt('dat_train_y_no_eng.csv', delimiter=',', dtype=None, names=True, max_rows=MAX_ROWS)
 
 # Split the dataset in training and test set:
 train_x, test_x, train_y, test_y = train_test_split(

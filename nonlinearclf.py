@@ -2,6 +2,7 @@ import time
 from operator import itemgetter
 
 import numpy as np
+import pandas as pd
 from sklearn import metrics
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import pairwise_distances
@@ -29,7 +30,7 @@ def get_average_prediction(train_set_y, neighbour_indices):
     class_votes = {}
     for i in neighbour_indices:
         # Get the class of neighbour (y value)
-        response = train_set_y[i]
+        response = train_set_y.iloc[i]
         if response in class_votes:
             class_votes[response] += 1
         else:
@@ -56,32 +57,35 @@ def predict_scikit(train_x, train_y, test_x, k):
 
 def main():
     # Maximum number of rows to load from the dataset, or None to load all
-    max_rows = 60000
+    max_rows = 50000
 
     # Flag indicating whether to time the process or not
-    running_time = True
+    running_time = False
 
     # Predict the Kaggle test set
-    predict_test_set = False
+    predict_test_set = True
 
     # Show statistics
     statistics = False
 
+    # Use scikit
+    scikit_knn = False
+
     # K neighbours
     k = 3
 
+    random_state = 551
+
     # Load the training set
     # X: (Id, Text)
-    train_set_x = np.genfromtxt('dat_train_x_no_eng.csv', delimiter=',', dtype=None, names=True, max_rows=max_rows,
-                                usecols=[0, 1])
+    train_set_x = pd.read_csv('train_set_x.csv', encoding='utf-8', keep_default_na=False, nrows=max_rows)
     # Y: (Id, Category)
-    train_set_y = np.genfromtxt('dat_train_y_no_eng.csv', delimiter=',', dtype=None, names=True, max_rows=max_rows,
-                                usecols=[0, 1])
+    train_set_y = pd.read_csv('train_set_y.csv', encoding='utf-8', keep_default_na=False, nrows=max_rows)
 
     # Split the dataset into a training and test set:
     train_x, test_x, train_y, test_y = train_test_split(
         train_set_x["Text"], train_set_y["Category"],
-        test_size=0.2, shuffle=True, random_state=551)
+        test_size=0.2, shuffle=True, random_state=random_state)
 
     # Use TF-IDF to model the data
     vec = TfidfVectorizer(analyzer='char')
@@ -93,19 +97,22 @@ def main():
     if running_time:
         start = time.time()
 
-    # test_y_pred = predict_scikit(train_x, train_y, test_x, k)
-    test_y_pred = predict(train_x, train_y, test_x, k)
+    if not predict_test_set:
+        if scikit_knn:
+            test_y_pred = predict_scikit(train_x, train_y, test_x, k)
+        else:
+            test_y_pred = predict(train_x, train_y, test_x, k)
 
-    print("Training Set Accuracy:", (test_y == test_y_pred).mean())
+        print("Training Set Accuracy:", (test_y == test_y_pred).mean())
 
     if predict_test_set:
         # Compute predictions for the real test set
-        test_set_x = np.genfromtxt('test_set_x.csv', delimiter=',', dtype=None, names=True, usecols=[0, 1])
+        test_set_x = pd.read_csv('test_set_x.csv', encoding='utf-8', keep_default_na=False)
         test_x = vec.transform(test_set_x["Text"])
-        test_y_pred = np.empty(test_x.shape[0])
-        for i in range(test_x.shape[0]):
-            neighbours = get_neighbours(train_x, test_x[i], k)
-            test_y_pred[i] = get_average_prediction(train_y, neighbours)
+        if scikit_knn:
+            test_y_pred = predict_scikit(train_x, train_y, test_x, k)
+        else:
+            test_y_pred = predict(train_x, train_y, test_x, k)
 
         # Export CSV
         np.savetxt("test_set_y.csv", list(zip(test_set_x["Id"], test_y_pred)),

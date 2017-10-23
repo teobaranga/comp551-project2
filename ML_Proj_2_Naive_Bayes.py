@@ -8,17 +8,18 @@ from sklearn.metrics import confusion_matrix
 import seaborn as sns
 from math import log
 import operator
-#import numpy as np
 
-x = pd.read_csv('dat_train_x_clean-ish.csv', encoding = 'utf-8') # Read csv
+x = pd.read_csv('train_x_clean-ish.csv', encoding = 'utf-8') # Read csv 
 # training file x data
-y = pd.read_csv('dat_train_y_clean-ish.csv') # Read csv training file y data
-# Split the data for Cross-Validation
-x_train, x_val, y_train, y_val = train_test_split(x, y, test_size = 0.2,
-                                                  random_state = 3)
+y = pd.read_csv('train_y_clean-ish.csv') # Read csv training file y data
+# Performing split on dataset for training and validation
+x_train, x_val, y_train, y_val = train_test_split(x, y, test_size = 0.2, 
+                                                  random_state = 2453126)
+
 x_train.Text = x_train.Text.str.lower() # Format all strings to lower case
 x_val.Text = x_val.Text.str.lower() # Format all strings to lower case
 
+# Organizing the data into dataframes
 Classes_Id = {}
 for i in range(0,5):
     Classes_Id["Class_{0}_Id".format(i)] = y_train.loc[y_train['Category'] == i]
@@ -43,25 +44,26 @@ for i in Doc_Count.keys():
 for Class in Classes_Text:
     counts = []
     for doc in Classes_Text[Class]['Text'].tolist():
-        cnt = Counter(str(doc))
+        cnt = Counter(unicode(doc))
         counts.append(cnt)
     Classes_Text[Class] = Classes_Text[Class].assign(Count = counts)
-
-# Vocabulary is the same in each class. Make list of Vocab
+    
+# Make list of Vocabulary
 Vocabulary = []
-for count in Classes_Text[0]['Count']:
-    for ltr in count:
-        if ltr not in Vocabulary:
-            Vocabulary.append(ltr)
+for Class in Classes_Text:
+    for count in Classes_Text[Class]['Count']:
+        for ltr in count:
+            if ltr not in Vocabulary:
+                Vocabulary.append(ltr)
 
-# Formulate number of sentences that contain each letter
+# Formulate number of sentences that contain each letternaive b
 num_docs_with_ltr = {}
 for Class in Classes_Text:
     for count in Classes_Text[Class]['Count']:
         for ltr in count:
-            if ltr not in num_docs_with_ltr:
+            if ltr not in num_docs_with_ltr.keys():
                 num_docs_with_ltr[ltr] = 1
-            else:
+            elif ltr in num_docs_with_ltr.keys():
                 num_docs_with_ltr[ltr] += 1
 
 # Get idf of each letter
@@ -90,7 +92,7 @@ for Class in Classes_Text:
                 sum_of_tfidf_ltrs[ltr] += tfidf[ltr]
     Sum_of_Tfidf[i] = sum_of_tfidf_ltrs
     i += 1
-
+    
 # Total sum of tfidf of all letters in each class
 Total_sum_of_tfidf = {}
 i = 0
@@ -104,37 +106,61 @@ i = 0
 for Class in Sum_of_Tfidf:
     Pw_c = {}
     for ltr in Sum_of_Tfidf[Class].keys():
-        Pw_c[ltr] = (Sum_of_Tfidf[Class][ltr] + 1)/(Total_sum_of_tfidf[Class] +
+        Pw_c[ltr] = (Sum_of_Tfidf[Class][ltr] + 1)/(Total_sum_of_tfidf[Class] + 
             len(Vocabulary))
     PW_C[i] = Pw_c
     i += 1
-
-## Applying NB Classifier
+        
+# Applying NB Classifier on training set
 Prob_Classes = []
 for docs in x_train.Text:
-    doc = [lt for lt in str(docs) if lt.isalpha()]
+    doc = [lt for lt in unicode(docs) if lt.isalpha()]
     Scores = {}
     for Class in PW_C:
         Scores[Class] = log(priors[Class])
         for ltr in doc:
             Scores[Class] += log(PW_C[Class][ltr])
-    Prob_Class = max(Scores.items(), key = operator.itemgetter(1))[0]
+    Prob_Class = max(Scores.iteritems(), key = operator.itemgetter(1))[0]
     Prob_Classes.append(Prob_Class)
 NB_Prob_Classes = y_train.assign(NB_Prob_Class = Prob_Classes)
-print("Training Accuracy: %f" % (NB_Prob_Classes.Category == NB_Prob_Classes.NB_Prob_Class).mean())
+print "Training Accuracy: %f" %(NB_Prob_Classes.Category == NB_Prob_Classes.NB_Prob_Class).mean()
+
+# Applying NB Classifier on validation set
+Prob_Classes = []
+for docs in x_val.Text:
+    doc = [lt for lt in unicode(docs) if lt.isalpha()]
+    Scores = {}
+    for Class in PW_C:
+        Scores[Class] = log(priors[Class])
+        for ltr in doc:
+            if ltr in PW_C[Class]:
+                Scores[Class] += log(PW_C[Class][ltr])
+    Prob_Class = max(Scores.iteritems(), key = operator.itemgetter(1))[0]
+    Prob_Classes.append(Prob_Class)
+NB_Prob_Classes = y_val.assign(NB_Prob_Class = Prob_Classes)
+print "Validation Accuracy: %f" %(NB_Prob_Classes.Category == NB_Prob_Classes.NB_Prob_Class).mean()
+
+# Confusion Matrix plot
 cm = confusion_matrix(NB_Prob_Classes.Category, NB_Prob_Classes.NB_Prob_Class)
 sns.heatmap(cm)
+plt.title("Validation Confusion Matrix")
+plt.xlabel("Predicted language")
+plt.ylabel("Actual language")
 plt.show()
 
 
-## NB Classifier Probabilities:
-#P(word|class)=
-#(word_count_in_class + 1)/(total_words_in_class +
-#  total_unique_words_in_all_classes(basically vocabulary of words in the entire training set))
+## Applying NB Classifier on test set (Uncomment to apply on test set)
+#x_test = pd.read_csv('dat_test_clean.csv', encoding = 'utf-8') # Read csv 
 #
-#word_count_in_class : sum of(tf-idf_weights of the word for all the documents belonging to that class)
-#//basically replacing the counts with the tfidf weights of the same word calculated for every document within that class.
-#
-#total_words_in_class : sum of(tf-idf weights of all the words belonging to that class)
-#
-#total_unique_words_in_all_classes : as is.
+#Prob_Classes_Test = []
+#for docs in x_test.Text:
+#    doc = [lt for lt in unicode(docs) if lt in Vocabulary]
+#    Scores = {}
+#    for Class in PW_C:
+#        Scores[Class] = log(priors[Class])
+#        for ltr in doc:
+#            Scores[Class] += log(PW_C[Class][ltr])
+#    Prob_Class = max(Scores.iteritems(), key = operator.itemgetter(1))[0]
+#    Prob_Classes_Test.append(Prob_Class)
+#NB_Prob_Classes = x_test.assign(Category = Prob_Classes_Test)
+#NB_Prob_Classes.to_csv('test_sub.csv', encoding = 'utf-8') # Write new csv file
